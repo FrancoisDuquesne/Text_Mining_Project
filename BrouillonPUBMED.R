@@ -67,8 +67,8 @@ new_stopwords<-append(stop,c("fig.","eq.","abstracttext"))
 tokens <- tokens_select(tokens, new_stopwords, selection = "remove")
 
 # stem
-tokens <- tokens_wordstem(tokens, language = "english")
-print(tokens)
+# tokens <- tokens_wordstem(tokens, language = "english")
+# print(tokens)
 
 # Create our first bag-of-words model.
 tokens.dfm <- dfm(tokens, tolower = FALSE)
@@ -90,7 +90,7 @@ wfindoc <- data.frame(word=names(freqInDoc), freq=freqInDoc)
 
 # plot word frequence
 pl <- ggplot(subset(wf, freq > 1) ,aes(word, freq))
-pl <- ggplot(subset(wfindoc, freq > 1) ,aes(word, freq))
+# pl <- ggplot(subset(wfindoc, freq > 1) ,aes(word, freq))
 pl <- pl + geom_bar(stat="identity", fill="darkred", colour="white")
 pl + theme(axis.text.x=element_text(angle=90, hjust=1)) + ggtitle("Uni-Gram Frequency")
 
@@ -134,7 +134,7 @@ View(tokens.tfidf[1:25, 1:NbrDoc])
 # Transpose the matrix
 tokens.tfidf <- t(tokens.tfidf)
 dim(tokens.tfidf)
-View(tokens.tfidf[1:100, 1:NbrDoc])
+View(tokens.tfidf[1:NbrDoc, 1:25])
 # 
 # # Check for incopmlete cases.
 # incomplete.cases <- which(!complete.cases(tokens.tfidf))
