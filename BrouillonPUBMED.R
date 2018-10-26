@@ -159,3 +159,11 @@ irlba <- irlba(t(tokens.tfidf), nv = 4, maxit = 60)
 # Take a look at the new feature data up close.
 View(irlba$v)
 
+#atribution de nom de lignes
+rownames(irlba$v)<-row.names(tokens.tfidf)
+
+eig1<-irlba$v[,1]
+eig2<-irlba$v[,2]
+plot(eig1,eig2,col="blue")
+text(eig1,eig2,row.names(irlba$v), cex=0.6, pos=4, col="red")
+
