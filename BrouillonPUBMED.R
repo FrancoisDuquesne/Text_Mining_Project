@@ -6,7 +6,7 @@ library(ggplot2)
 ############### PART 1: extraction des textes
 
 ##### Option 1: 698 documents via une requete
-Querry_String <- "mouse"
+Querry_String <- "protein"
 Ids <- get_pubmed_ids(Querry_String)  
 # get_pubmed_ids() decompose les characteristiques de Querry_String en nombre de char et mot clef (ex: AND) et compose une querry comprehensible pour fetch_pubmed_data().
 papers <- fetch_pubmed_data(Ids)
@@ -15,9 +15,7 @@ print(papers)
 
 ##### Option 2: 52349 documents via importation du fichier xml.
 papers <- xmlParse(file = "/home/francois/Desktop/pubmed18n0924.xml")
-
 # papers est une structure type html qui contien tt les info pour tt les documents (ici +-52300 doc) qui ont etes recueillis par fetch_pubmed_data()
-print(papers)
 
 
 # A partir de papers, on va chercher l'Abstract. 
@@ -38,17 +36,18 @@ Abstract_pos <- regexpr('<AbstractText>.*<\\/AbstractText>', Abstract)
 Abstract <- substr(Abstract, Abstract_pos + 14, Abstract_pos + attributes(Abstract_pos)$match.length - 16) 
 head(Abstract)
 
+Abstract <- Abstract[Abstract!=""]
+head(Abstract)
+
 
 ############### PART 2: text mining
 
 # Approche Bag of words:
-NbrDoc<-10
+NbrDoc<-100
 raw <- Abstract[1:NbrDoc]
 print(raw)
 
 library(quanteda)
-# help(package = "quanteda")
-
 
 # Tokenize
 tokens <- tokens(raw, what = "word", 
@@ -135,15 +134,15 @@ View(tokens.tfidf[1:25, 1:NbrDoc])
 tokens.tfidf <- t(tokens.tfidf)
 dim(tokens.tfidf)
 View(tokens.tfidf[1:NbrDoc, 1:25])
-# 
-# # Check for incopmlete cases.
-# incomplete.cases <- which(!complete.cases(tokens.tfidf))
-# raw[incomplete.cases]
-# 
-# # Fix incomplete cases
-# tokens.tfidf[incomplete.cases,] <- rep(0.0, ncol(tokens.tfidf))
-# dim(tokens.tfidf)
-# sum(which(!complete.cases(tokens.tfidf)))
+
+# Check for incopmlete cases.
+incomplete.cases <- which(!complete.cases(tokens.tfidf))
+raw[incomplete.cases]
+
+# Fix incomplete cases
+tokens.tfidf[incomplete.cases,] <- rep(0.0, ncol(tokens.tfidf))
+dim(tokens.tfidf)
+sum(which(!complete.cases(tokens.tfidf)))
 
 # Make a clean data frame.
 tokens.tfidf.df <- data.frame(tokens.tfidf)
@@ -153,33 +152,48 @@ library(irlba)
 
 # Perform SVD. Specifically, reduce dimensionality down to 300 columns
 # for our latent semantic analysis (LSA).
-irlba <- irlba(t(tokens.tfidf), nv = 4, maxit = 60)
-
+irlba <- irlba(t(tokens.tfidf), nv = 30, maxit = 1000)
 
 # Take a look at the new feature data up close.
 View(irlba$v)
 
-# Make 3D plot
-#-------------
 
+# SVD
+#-----
+# results_SVD<- svd(t(tokens.tfidf))
+# eig1<-results_SVD$u[,1]
+# eig2<-results_SVD$u[,2]
+# eig3<-results_SVD$u[,3]
+
+# Make 3D plot
+#----------------
 #atribution de nom de lignes
 rownames(irlba$v)<-row.names(tokens.tfidf)
-
 eig1<-irlba$v[,1]
 eig2<-irlba$v[,2]
 eig3<-irlba$v[,3]
 
 # 2D Plot:
-#---------
 plot(eig1,eig2,col="blue")
 text(eig1,eig2,row.names(irlba$v), cex=0.6, pos=4, col="red")
 
 # 3D Plot:
-#---------
-# install.packages("scatterplot3d") # Install
 library("scatterplot3d")
 
 s3d<-scatterplot3d(eig1,eig2,eig3, pch = 16, color="steelblue")
 text(s3d$xyz.convert(eig1,eig2,eig3), labels = rownames(irlba$v),
      cex= 0.7, col = "red")
+
+# library(car) # faut aussi installer lib("rgl")
+# # 3D plot with the regression plane
+# scatter3d(x = eig1, y = eig2, z = eig3)
+
+
+
+# Clustering
+#--------------
+res <- kmeans(irlba$v,centers = 2)
+plot(irlba$v,col = res$cluster , pch = res$cluster)
+points(res$centers, col = 1:5, pch = 8)
+
 
