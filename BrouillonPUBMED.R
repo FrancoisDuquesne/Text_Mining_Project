@@ -6,7 +6,7 @@ library(ggplot2)
 ############### PART 1: extraction des textes
 
 ##### Option 1: 698 documents via une requete
-Querry_String <- "aids"
+Querry_String <- "mouse"
 Ids <- get_pubmed_ids(Querry_String)  
 # get_pubmed_ids() decompose les characteristiques de Querry_String en nombre de char et mot clef (ex: AND) et compose une querry comprehensible pour fetch_pubmed_data().
 papers <- fetch_pubmed_data(Ids)
@@ -44,7 +44,7 @@ Abstract <- Abstract[Abstract!=""]
 
 # Approche Bag of words:
 NbrDoc<-100
-raw <- Abstract[1:NbrDoc]
+raw <- Abstract
 # print(raw)
 
 library(quanteda)
@@ -52,7 +52,7 @@ library(quanteda)
 # Tokenize
 tokens <- tokens(raw, what = "word", 
                        remove_numbers = TRUE, remove_punct = TRUE,
-                       remove_symbols = TRUE, remove_hyphens = TRUE)
+                       remove_symbols = TRUE, remove_hyphens = FALSE)
 
 # for bigrams.
 # test.tokens <- tokens_ngrams(test.tokens, n = 1:2)
@@ -62,8 +62,9 @@ tokens <- tokens_tolower(tokens)
 
 # stopwords
 stop<-stopwords()
-new_stopwords<-append(stop,c("fig.","eq.","abstracttext"))
+new_stopwords<-append(stop,c("fig.","eq.","abstracttext","e.g"))
 tokens <- tokens_select(tokens, new_stopwords, selection = "remove")
+tokens <- tokens_select(tokens,min_nchar = 2, selection ="keep")
 
 # stem
 # tokens <- tokens_wordstem(tokens, language = "english")
@@ -88,10 +89,10 @@ freqInDoc <- sort(tokens.matrix[Doc,], decreasing=TRUE)
 wfindoc <- data.frame(word=names(freqInDoc), freq=freqInDoc)
 
 # plot word frequence
-pl <- ggplot(subset(wf, freq > 1) ,aes(word, freq))
-# pl <- ggplot(subset(wfindoc, freq > 1) ,aes(word, freq))
-pl <- pl + geom_bar(stat="identity", fill="darkred", colour="white")
-pl + theme(axis.text.x=element_text(angle=90, hjust=1)) + ggtitle("Uni-Gram Frequency")
+# pl <- ggplot(subset(wf, freq > 1) ,aes(word, freq))
+# # pl <- ggplot(subset(wfindoc, freq > 1) ,aes(word, freq))
+# pl <- pl + geom_bar(stat="identity", fill="darkred", colour="white")
+# pl + theme(axis.text.x=element_text(angle=90, hjust=1)) + ggtitle("Uni-Gram Frequency")
 
 # Word Cloud
 # library(wordcloud)
@@ -137,12 +138,12 @@ tokens.tfidf <- t(tokens.tfidf)
 
 # Check for incopmlete cases.
 incomplete.cases <- which(!complete.cases(tokens.tfidf))
-raw[incomplete.cases]
+# raw[incomplete.cases]
 
 # Fix incomplete cases
 tokens.tfidf[incomplete.cases,] <- rep(0.0, ncol(tokens.tfidf))
 # dim(tokens.tfidf)
-sum(which(!complete.cases(tokens.tfidf)))
+# sum(which(!complete.cases(tokens.tfidf)))
 
 # Make a clean data frame.
 tokens.tfidf.df <- data.frame(tokens.tfidf)
@@ -152,7 +153,7 @@ library(irlba)
 
 # Perform SVD. Specifically, reduce dimensionality down to 300 columns
 # for our latent semantic analysis (LSA).
-irlba <- irlba(t(tokens.tfidf), nv = 30, maxit = 1000)
+irlba <- irlba(t(tokens.tfidf), nv = 10, maxit = 1000)
 
 # Take a look at the new feature data up close.
 # View(irlba$v)
@@ -178,24 +179,43 @@ eig3<-irlba$v[,3]
 # text(eig1,eig2,row.names(irlba$v), cex=0.6, pos=4, col="red")
 
 # 3D Plot:
-library("scatterplot3d")
+# library("scatterplot3d")
 
-s3d<-scatterplot3d(eig1,eig2,eig3, pch = 16, color="steelblue")
-text(s3d$xyz.convert(eig1,eig2,eig3), labels = rownames(irlba$v),
-     cex= 0.7, col = "red")
+# s3d<-scatterplot3d(eig1,eig2,eig3, pch = 16, color="steelblue")
+# text(s3d$xyz.convert(eig1,eig2,eig3), labels = rownames(irlba$v),
+#      cex= 0.7, col = "red")
 
 # library(car) # faut aussi installer lib("rgl")
 # # 3D plot with the regression plane
 # scatter3d(x = eig1, y = eig2, z = eig3)
-Querry_String <- 'drug'
-index <- match(Querry_String, rownames(tokens.df))
-eig_querry <- irlba$u[index,]
 
+################ Querries (based on SVD) ###################
+#-----------------------------------------------------------
 
-s3d<-scatterplot3d(eig1,eig2,eig3, pch = 16, color="steelblue")
-text(s3d$xyz.convert(eig1,eig2,eig3), labels = rownames(irlba$v),
-     cex= 0.7, col = "green")
-s3d$points3d(eig_querry[1],eig_querry[2],eig_querry[3],pch=16,color="red")
+# give a positive querry: as a vector of strings ('querry','querry',...)
+posQuerry_String <- c('vaccine','test')
+# give a negative querry:
+negQuerry_String <- c('eom','cardiac')
+
+posIndex <- vector(length = length(posQuerry_String))
+for (i in (1:length(posQuerry_String))) {
+  posIndex[i] <- match(posQuerry_String[i], rownames(tokens.df))
+}
+eig_posQuerry <- irlba$u[posIndex,]
+
+if (length(negQuerry_String)>1 | negQuerry_String != ''){
+  negIndex <- vector(length = length(negQuerry_String))
+  for (i in (1:length(negQuerry_String))) {
+    negIndex[i] <- match(negQuerry_String[i], rownames(tokens.df))
+  }
+  eig_negQuerry <- irlba$u[negIndex,]
+}
+
+# 
+# s3d<-scatterplot3d(eig1,eig2,eig3, pch = 16, color="steelblue")
+# text(s3d$xyz.convert(eig1,eig2,eig3), labels = rownames(irlba$v),
+#      cex= 0.7, col = "green")
+# s3d$points3d(eig_posQuerry[1],eig_posQuerry[2],eig_posQuerry[3],pch=16,color="red")
 
 # This function computes the euclidean distance between the querry and each document
 euc.dist <- function(docs,querry){ 
@@ -212,10 +232,30 @@ euc.dist <- function(docs,querry){
   return(euc.dist)
 }
 # Calculate distance, order and name the rows
-distMatrix <- euc.dist(irlba$v, eig_querry)
+posdistMatrix <- matrix(nrow = length(posQuerry_String),ncol=dim(irlba$v)[1])
+posdist <- rep(1,length = dim(irlba$v)[1])
+for (i in (1:length(posQuerry_String))) {
+  posdistMatrix[i,] <- euc.dist(irlba$v, eig_posQuerry[i,])
+  posdist <- posdist * posdistMatrix[i,]
+}
+
+
+if (negQuerry_String[1] != ""){
+  negdistMatrix <- matrix(1L,nrow = length(negQuerry_String),ncol=dim(irlba$v)[1])
+  negdist <- rep(1,length = dim(irlba$v)[1])
+  for (i in (1:length(negQuerry_String))) {
+    negdistMatrix[i,] <- euc.dist(irlba$v, eig_negQuerry[i,])
+    negdist <- negdist * negdistMatrix[i,]
+  }
+  distMatrix <- posdist / negdist
+}else distMatrix <- posdist
+
+
 distDF <- as.data.frame(distMatrix)
 rownames(distDF)<-row.names(irlba$v)
-distDF <- distDF[order(-distDF$distMatrix), ,drop=FALSE]
+distDF <- distDF[order(distDF$distMatrix), ,drop=FALSE]
+
+
 
 # Compute 10 most relevant (tf-idf) words in each documents
 bestWords <- function(tokens.tfidf,docId){
@@ -234,8 +274,9 @@ for (i in (1:10)) {
   Result[i,] <- bestWords(tokens.tfidf,index)
 }
 View(Result)
+
 # Clustering
 #--------------
-res <- kmeans(irlba$v,centers = 2)
-plot(irlba$v,col = res$cluster , pch = res$cluster)
-points(res$centers, col = 1:5, pch = 8)
+# res <- kmeans(irlba$v,centers = 2)
+# plot(irlba$v,col = res$cluster , pch = res$cluster)
+# points(res$centers, col = 1:5, pch = 8)
