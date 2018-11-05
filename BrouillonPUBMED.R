@@ -1,4 +1,3 @@
-if (!require("easyPubMed")) install.packages("easyPubMed")
 library(XML)
 library(easyPubMed)
 library(ggplot2)
@@ -8,36 +7,46 @@ library(ggplot2)
 ##### Option 1: 698 documents via une requete
 Querry_String <- "mouse"
 Ids <- get_pubmed_ids(Querry_String)  
-# get_pubmed_ids() decompose les characteristiques de Querry_String en nombre de char et mot clef (ex: AND) et compose une querry comprehensible pour fetch_pubmed_data().
 papers <- fetch_pubmed_data(Ids)
-# papers est une structure type html qui contien tt les info pour tt les documents (ici +-700 doc) qui ont etes recueillis par fetch_pubmed_data()
-# print(papers)
 
 ##### Option 2: 52349 documents via importation du fichier xml.
 # papers <- xmlParse(file = "/home/francois/Desktop/pubmed18n0924.xml")
-# papers est une structure type html qui contien tt les info pour tt les documents (ici +-52300 doc) qui ont etes recueillis par fetch_pubmed_data()
 
 
-# A partir de papers, on va chercher l'Abstract. 
-# /!\ Probleme: les abstracts sont composes de plusieurs parties:
-# <AbstractText Label=\"BACKGROUND AND OBJECTIVE\" NlmCategory=\"OBJECTIVE\">
-# <AbstractText Label=\"MATERIALS AND METHODS\" NlmCategory=\"METHODS\">
-# <AbstractText Label=\"RESULTS\" NlmCategory=\"RESULTS\">
-# <AbstractText Label=\"CONCLUSION\" NlmCategory=\"CONCLUSIONS\">
-# le code suivant ne fait pas une bonne partition du coup.
+# Preprocessing des abstracts
+#---------------------------
+library(stringr)
 
+# Remove XML text
 
-Abstract <- unlist(xpathApply(papers, "//AbstractText", saveXML))
-# head(Abstract)
-# position des "<AbstractText>"
-Abstract_pos <- regexpr('<AbstractText>.*<\\/AbstractText>', Abstract)
+# Abstract <- unlist(xpathApply(papers, "//Abstract", saveXML))
+Article <- unlist(xpathApply(papers, "//PubmedArticle", saveXML))
+Abstract <- vector()
+for (i in 1:length(Article)) {
+  Abstract[i] <- sub(".*<Abstract>\n        ", "", Article[i])
+  Abstract[i] <- sub("\n      </Abstract>\n.*", "", Abstract[i])
+  # Abstract[i] <- substr(Abstract[i], 14, nchar(Abstract[i]) - 12)
+  Abstract[i] <- sub("<CopyrightInformation>.*</CopyrightInformation>", "", Abstract[i])
+  if (startsWith(Abstract[i], "<AbstractText>")) {
+    Abstract[i] <- substr(Abstract[i], 15, nchar(Abstract[i]) - 18)
+  } else {
+    Abstract[i] <- str_replace_all(Abstract[i], "<AbstractText.*\">", "")
+    Abstract[i] <- gsub("</AbstractText>\n       ","",Abstract[i])
+  }
+}
 
-# on enleve le <AbstractText> au debut de l' Abstract.
-Abstract <- substr(Abstract, Abstract_pos + 14, Abstract_pos + attributes(Abstract_pos)$match.length - 16) 
-# head(Abstract)
+# Remove too long or too short Abstracts
+for (i in 1:length(Abstract)) {
+  if (nchar(Abstract[i])<100 || nchar(Abstract[i])>4000) {
+    Abstract[i]<- ""
+  }
+}
+Abstract<-Abstract[Abstract!=""]
 
-Abstract <- Abstract[Abstract!=""]
-# head(Abstract)
+#Just to visualyse abstract lengths
+a<- vector()
+for (i in 1:length(Abstract)) {a[i]<-nchar(Abstract[i])}
+plot(a)
 
 
 ############### PART 2: text mining
