@@ -212,7 +212,7 @@ for (i in (1:length(posQuerry_String))) {
 }
 eig_posQuerry <- irlba$u[posIndex,]
 
-if (length(negQuerry_String)>1 | negQuerry_String != ''){
+if (negQuerry_String[1] != ""){
   negIndex <- vector(length = length(negQuerry_String))
   for (i in (1:length(negQuerry_String))) {
     negIndex[i] <- match(negQuerry_String[i], rownames(tokens.df))
