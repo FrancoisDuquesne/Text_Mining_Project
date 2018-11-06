@@ -41,7 +41,7 @@ for (i in 1:length(Abstract)) {
     Abstract[i]<- ""
   }
 }
-Abstract<-Abstract[Abstract!=""]
+# Abstract<-Abstract[Abstract!=""]
 
 #Just to visualyse abstract lengths
 a<- vector()
@@ -202,9 +202,9 @@ eig3<-irlba$v[,3]
 #-----------------------------------------------------------
 
 # give a positive querry: as a vector of strings ('querry','querry',...)
-posQuerry_String <- c('vaccine','test')
+posQuerry_String <- c('vaccine','vaccine')
 # give a negative querry:
-negQuerry_String <- c('eom','cardiac')
+negQuerry_String <- c('')
 
 posIndex <- vector(length = length(posQuerry_String))
 for (i in (1:length(posQuerry_String))) {
@@ -245,7 +245,7 @@ posdistMatrix <- matrix(nrow = length(posQuerry_String),ncol=dim(irlba$v)[1])
 posdist <- rep(1,length = dim(irlba$v)[1])
 for (i in (1:length(posQuerry_String))) {
   posdistMatrix[i,] <- euc.dist(irlba$v, eig_posQuerry[i,])
-  posdist <- posdist * posdistMatrix[i,]
+  posdist <- posdist + posdistMatrix[i,]
 }
 
 
@@ -254,7 +254,7 @@ if (negQuerry_String[1] != ""){
   negdist <- rep(1,length = dim(irlba$v)[1])
   for (i in (1:length(negQuerry_String))) {
     negdistMatrix[i,] <- euc.dist(irlba$v, eig_negQuerry[i,])
-    negdist <- negdist * negdistMatrix[i,]
+    negdist <- negdist + negdistMatrix[i,]
   }
   distMatrix <- posdist / negdist
 }else distMatrix <- posdist
